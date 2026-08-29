@@ -1,5 +1,9 @@
 # Cloud Browser
 
+[![CI](https://github.com/thomashendrixkw-code/cloud-browser/actions/workflows/ci.yml/badge.svg)](https://github.com/thomashendrixkw-code/cloud-browser/actions/workflows/ci.yml)
+[![Licence MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen.svg)](package.json)
+
 Un navigateur Chromium tourne **sur le serveur** ; vous ne recevez que des images
 JPEG de la page et vos clics, frappes et scrolls y sont rejoués. Le site visité
 ne voit jamais votre IP : il ne voit que celle de la machine qui exécute ce
@@ -350,3 +354,16 @@ src/
 ```
 
 Trois dépendances : `express`, `ws`, `playwright`.
+
+---
+
+## Contribuer
+
+Le fonctionnement, les repères de code et les invariants à ne pas casser sont
+dans [CONTRIBUTING.md](CONTRIBUTING.md). `npm test` lance une suite de bout en
+bout hermétique : elle démarre le serveur, sert une page locale et vérifie le
+rendu, les interactions, la validation d'URL et le cycle de vie des sessions.
+
+## Licence
+
+[MIT](LICENSE) — © 2026 Thomas Hendrickx.
