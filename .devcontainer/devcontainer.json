@@ -2,30 +2,27 @@
   "name": "Cloud Browser",
 
   // Image officielle Playwright : Chromium et ses dépendances système sont déjà
-  // présents, le Codespace démarre donc sans téléchargement de navigateur.
+  // présents, `npm install` n'a donc rien à télécharger côté navigateur.
   // Sa version doit rester alignée sur celle de "playwright" dans package.json.
   "image": "mcr.microsoft.com/playwright:v1.49.1-jammy",
-  "remoteUser": "pwuser",
 
-  // L'encodage JPEG de chaque image est le poste de calcul dominant : deux cœurs
-  // suffisent à peine, quatre laissent de la marge pour tenir une cadence élevée.
+  // Volontairement aucune commande de cycle de vie : pas de `postCreateCommand`
+  // ni de démarrage automatique. Une installation qui échoue en arrière-plan est
+  // plus déroutante que deux commandes explicites (voir le README), et un
+  // serveur lancé tout seul entre en collision avec celui qu'on lance soi-même.
+
+  // 2 cœurs suffisent à démarrer ; 4 rendent le flux nettement plus fluide,
+  // l'encodage JPEG étant le poste de calcul dominant.
   "hostRequirements": {
-    "cpus": 4,
+    "cpus": 2,
     "memory": "8gb",
     "storage": "32gb"
   },
 
   "containerEnv": {
-    // Le sandbox Chromium n'existe pas dans un conteneur Codespace. Acceptable
-    // ici : le port n'est joignable qu'à travers le tunnel HTTPS de GitHub.
+    // Le sandbox Chromium n'existe pas dans ce conteneur. Acceptable ici : le
+    // port n'est joignable qu'à travers le tunnel HTTPS privé de GitHub.
     "CHROMIUM_SANDBOX": "false"
-  },
-
-  "postCreateCommand": "npm install",
-  // Forme objet : la commande tourne dans son propre terminal sans bloquer
-  // l'ouverture du Codespace.
-  "postAttachCommand": {
-    "server": "npm start"
   },
 
   "forwardPorts": [8787],

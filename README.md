@@ -13,22 +13,53 @@ projet.
 
 Prévu pour **1 à 3 sessions simultanées** — un usage personnel, pas un service.
 
+![Un article Wikipédia affiché dans le navigateur distant](docs/navigation.png)
+
+**Sommaire** — [Démarrage](#démarrage) · [Conçu pour le tunnel Codespaces](#conçu-pour-le-tunnel-codespaces) ·
+[Utilisation](#utilisation) · [Comment ça marche](#comment-ça-marche) ·
+[Accès et sécurité](#accès-et-sécurité) · [Configuration](#configuration) ·
+[API](#api) · [Dépannage](#dépannage) · [Limites connues](#limites-connues)
+
 ---
 
 ## Démarrage
 
 ### Dans un GitHub Codespace (cible principale)
 
-Ouvrez le dépôt dans un Codespace : rien d'autre à faire. Le conteneur part de
-l'image officielle Playwright (Chromium déjà installé), `npm install` s'exécute
-à la création, le serveur démarre à l'attachement, le port 8787 est transmis et
-l'aperçu s'ouvre.
+**1.** *Code → Codespaces → Create codespace on main.* Le conteneur part de
+l'image officielle Playwright : Chromium et ses dépendances système y sont déjà.
 
-Le `devcontainer.json` demande une machine **4 cœurs** : l'encodage JPEG de
-chaque image est le poste de calcul dominant, et deux cœurs y suffisent à peine
-une fois Chromium servi.
+**2.** Dans le terminal du Codespace, installez les dépendances Node :
 
-**Le réglage qui pèse le plus lourd n'est pas dans ce dépôt** : c'est la
+```bash
+npm install
+```
+
+Quelques secondes seulement : le navigateur étant déjà présent dans l'image,
+il n'y a que trois paquets à récupérer.
+
+**3.** Démarrez le serveur :
+
+```bash
+npm start
+```
+
+**4.** VS Code propose alors d'ouvrir le port **8787** — soit par la
+notification, soit par l'onglet **Ports**. L'adresse ressemble à
+`https://<nom-du-codespace>-8787.app.github.dev` et n'est accessible qu'à votre
+compte GitHub.
+
+> **Pourquoi ces deux commandes ne sont pas automatiques.** Le
+> `devcontainer.json` ne déclare volontairement aucune commande de cycle de vie.
+> Une installation qui échoue en arrière-plan est plus déroutante que deux
+> commandes explicites, et un serveur démarré tout seul entre en collision avec
+> celui que vous lancez ensuite. Vous voyez ce qui se passe, et les erreurs
+> s'affichent devant vous.
+
+**Machine :** 2 cœurs suffisent à démarrer, 4 rendent le flux nettement plus
+fluide — l'encodage JPEG de chaque image est le poste de calcul dominant.
+
+**Et le réglage qui pèse le plus lourd n'est pas dans ce dépôt** : c'est la
 *région* de votre Codespace (GitHub → Settings → Codespaces → Default region).
 Le trajet navigateur → périphérie GitHub → machine virtuelle domine tout le
 reste ; une région proche de vous vaut tous les réglages de qualité réunis.
@@ -43,7 +74,7 @@ npm start       # http://localhost:8787
 Node 20 ou plus. Aucune configuration n'est nécessaire : sans `.env`, le serveur
 écoute uniquement sur `127.0.0.1` et n'est donc joignable que depuis votre
 machine. En développement, `npm run dev` relance le serveur à chaque
-modification.
+modification ; `npm test` lance la suite de bout en bout.
 
 ---
 
@@ -114,6 +145,11 @@ et fait choisir l'essentiel : moteur de recherche, et compromis entre réactivit
 et finesse d'image. Elle ne réapparaît plus ensuite — tout ce qu'elle règle
 reste modifiable dans **Paramètres**, où un bouton permet aussi de la revoir.
 
+<p align="center">
+  <img src="docs/introduction.png" width="49%" alt="Introduction au premier lancement" />
+  <img src="docs/parametres.png" width="49%" alt="Panneau Paramètres" />
+</p>
+
 À l'ouverture d'une session, le navigateur distant affiche une **page d'accueil**
 à la manière d'un nouvel onglet : barre de recherche avec sélecteur de moteur
 intégré, et raccourcis vers quelques sites. Elle est injectée directement dans
@@ -121,6 +157,8 @@ la page (`setContent`), sans requête réseau ni origine exposée : la barre
 d'adresse reste donc vide plutôt que d'afficher une URL interne. Le bouton
 maison y ramène à tout moment, et `HOME_URL` la remplace par le site de votre
 choix.
+
+![Page d'accueil du navigateur distant](docs/accueil.png)
 
 **Le moteur de recherche** (Google, DuckDuckGo, Bing, Qwant, Brave, Ecosia) vaut
 partout : page d'accueil *et* barre d'adresse de l'application partagent la même
@@ -297,6 +335,47 @@ et l'état en JSON ; le client envoie ses interactions :
 
 ---
 
+## Dépannage
+
+**Le port est déjà utilisé.** Le serveur le dit et propose une alternative :
+`PORT=8788 npm start`. Une instance oubliée dans un autre terminal est la cause
+la plus fréquente.
+
+**La page s'affiche mais reste figée, ou le flux ne démarre pas.** Vérifiez que
+le port n'est pas intercepté par un agent local. Le **8080 est le port proxy par
+excellence** : sur certaines machines, un service s'y intercale et casse le
+WebSocket (`Invalid WebSocket frame: RSV1 must be clear`). C'est la raison pour
+laquelle le port par défaut est 8787 ; si vous l'avez changé, essayez-en un
+autre avant de chercher plus loin.
+
+**`Executable doesn't exist` au lancement de Chromium.** L'installation du
+navigateur n'a pas eu lieu : `npx playwright install chromium`. En conteneur,
+ajoutez `--with-deps` pour les bibliothèques système.
+
+**`Failed to launch` ou plantage immédiat en conteneur.** Le sandbox Chromium
+n'y est pas disponible : `CHROMIUM_SANDBOX=false` (déjà réglé dans le
+devcontainer). Ne le désactivez pas sur une machine exposée.
+
+**`503` à l'ouverture d'une session.** La limite de sessions simultanées est
+atteinte (`MAX_SESSIONS`, 3 par défaut). Les sessions inactives se ferment
+d'elles-mêmes au bout de `SESSION_IDLE_MINUTES` ; l'interface réessaie seule.
+
+**Le site affiche un blocage ou un CAPTCHA.** C'est la limite décrite plus bas :
+certains sites reconnaissent un navigateur automatisé. Les CAPTCHA visibles
+restent résolvables à la main, les challenges invisibles non.
+
+**L'image est nette mais saccadée.** Le régulateur a probablement baissé la
+qualité pour protéger la latence — c'est le comportement voulu sur un lien
+chargé. Pour figer un compromis, désactivez « Qualité adaptative » dans
+Paramètres. Pour diagnostiquer, activez « Afficher les mesures » : la latence
+affichée est celle du trajet réel.
+
+**Rien ne s'affiche dans un Codespace.** Assurez-vous que `npm start` tourne
+toujours dans le terminal, puis ouvrez le port 8787 depuis l'onglet **Ports**.
+Le tunnel est privé : une session GitHub différente n'y a pas accès.
+
+---
+
 ## Limites connues
 
 **Détection anti-bot.** C'est la limite la plus visible. Cloudflare, DataDome et
@@ -332,7 +411,7 @@ fermeture ramène à la précédente.
 ## Structure
 
 ```
-.devcontainer/devcontainer.json   image Playwright, 4 cœurs, démarrage et port 8787 automatiques
+.devcontainer/devcontainer.json   image Playwright, port 8787, sandbox désactivé
 public/                           interface Liquid Glass : index.html, login.html, app.js, styles.css
 src/
 ├── index.js                      Express + HTTP + WebSocket + arrêt propre
