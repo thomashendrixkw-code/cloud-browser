@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20', '22']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Installer Chromium et ses dépendances système
+        run: npx playwright install --with-deps chromium
+
+      - name: Vérifier la syntaxe
+        run: |
+          for file in $(git ls-files '*.js' '*.mjs'); do
+            node --check "$file"
+          done
+
+      - name: Test de bout en bout
+        run: npm test
+        env:
+          # Le sandbox Chromium n'apporte rien dans un runner jetable et rend
+          # le test dépendant de la configuration du noyau de l'image.
+          CHROMIUM_SANDBOX: 'false'

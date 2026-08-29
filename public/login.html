@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Connexion — Cloud Browser</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🛰️</text></svg>" />
+    <link rel="stylesheet" href="/styles.css" />
+    <style>
+      /* Faute de page distante à réfracter, le verre repose sur des halos colorés. */
+      .aurora {
+        position: fixed;
+        inset: -20%;
+        z-index: 0;
+        filter: blur(90px) saturate(160%);
+        opacity: 0.9;
+      }
+      .aurora span {
+        position: absolute;
+        display: block;
+        border-radius: 50%;
+        animation: drift 22s ease-in-out infinite alternate;
+      }
+      .aurora span:nth-child(1) { width: 46vw; height: 46vw; left: 8%; top: 6%; background: #5ac8fa; }
+      .aurora span:nth-child(2) { width: 40vw; height: 40vw; right: 6%; top: 18%; background: #af7bff; animation-delay: -7s; }
+      .aurora span:nth-child(3) { width: 38vw; height: 38vw; left: 32%; bottom: 2%; background: #ff9db1; animation-delay: -13s; }
+      @keyframes drift {
+        to { transform: translate3d(4vw, -5vh, 0) scale(1.12); }
+      }
+      @media (prefers-color-scheme: dark) { .aurora { opacity: 0.5; } }
+      @media (prefers-reduced-motion: reduce) { .aurora span { animation: none; } }
+
+      .center { position: fixed; inset: 0; z-index: 1; display: grid; place-items: center; padding: 24px; }
+      .card { width: min(380px, 100%); padding: 30px 28px; }
+      .card > * { position: relative; z-index: 1; }
+      .card h1 { margin: 0 0 6px; font-size: 22px; font-weight: 650; letter-spacing: -0.02em; }
+      .card p.sub { margin: 0 0 24px; font-size: 13px; line-height: 1.45; color: var(--muted); }
+      .field { margin-bottom: 14px; }
+      .field label { display: block; margin: 0 0 6px 4px; font-size: 12px; color: var(--muted); }
+      .field input {
+        width: 100%;
+        padding: 11px 15px;
+        font: inherit;
+        font-size: 15px;
+        color: var(--text);
+        background: var(--fill);
+        border: 0.5px solid var(--stroke);
+        border-radius: var(--r-md);
+        box-shadow: inset 0 1px 2px rgba(10, 15, 25, 0.07);
+        outline: none;
+        transition: background 200ms ease, box-shadow 200ms ease;
+      }
+      .field input:focus {
+        background: var(--fill-hover);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
+      }
+      .submit {
+        width: 100%;
+        margin-top: 6px;
+        padding: 12px;
+        font: inherit;
+        font-size: 15px;
+        font-weight: 600;
+        color: #fff;
+        background: var(--accent);
+        border: none;
+        border-radius: var(--r-md);
+        cursor: pointer;
+        box-shadow: 0 6px 20px color-mix(in srgb, var(--accent) 40%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+        transition: transform 260ms var(--spring), opacity 200ms ease;
+      }
+      .submit:active { transform: scale(0.97); }
+      .submit:disabled { opacity: 0.6; cursor: progress; }
+      .error { min-height: 18px; margin: 14px 0 0; font-size: 13px; color: var(--danger); text-align: center; }
+    </style>
+  </head>
+  <body>
+    <div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
+
+    <div class="center">
+      <form class="card glass" id="login-form" autocomplete="on">
+        <h1>Cloud Browser</h1>
+        <p class="sub">Accès réservé — ce navigateur distant sort sur Internet avec l’adresse IP du serveur.</p>
+
+        <div class="field">
+          <label for="user">Utilisateur</label>
+          <input id="user" name="username" type="text" value="admin" autocomplete="username" spellcheck="false" />
+        </div>
+
+        <div class="field">
+          <label for="password">Mot de passe</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required autofocus />
+        </div>
+
+        <button id="submit" class="submit" type="submit">Se connecter</button>
+        <p class="error" id="error" role="alert"></p>
+      </form>
+    </div>
+
+    <script type="module">
+      const form = document.getElementById('login-form');
+      const errorBox = document.getElementById('error');
+      const submit = document.getElementById('submit');
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        errorBox.textContent = '';
+        submit.disabled = true;
+        try {
+          const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user: document.getElementById('user').value.trim(),
+              password: document.getElementById('password').value,
+            }),
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            errorBox.textContent =
+              response.status === 429
+                ? 'Trop de tentatives. Patientez quelques minutes.'
+                : payload.message || 'Connexion impossible.';
+            return;
+          }
+          location.replace('/');
+        } catch {
+          errorBox.textContent = 'Serveur injoignable.';
+        } finally {
+          submit.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>

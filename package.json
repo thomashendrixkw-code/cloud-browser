@@ -1,0 +1,36 @@
+{
+  "name": "cloud-browser",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Navigateur distant : Chromium headless piloté par Playwright, rendu streamé dans le navigateur de l'utilisateur.",
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "postinstall": "playwright install chromium",
+    "test": "node test/smoke.mjs"
+  },
+  "dependencies": {
+    "express": "4.21.2",
+    "playwright": "1.49.1",
+    "ws": "8.18.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thomashendrixkw-code/cloud-browser.git"
+  },
+  "license": "MIT",
+  "keywords": [
+    "playwright",
+    "chromium",
+    "remote-browser",
+    "cloud-browser",
+    "websocket",
+    "streaming",
+    "codespaces"
+  ]
+}

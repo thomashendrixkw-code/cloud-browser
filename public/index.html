@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Cloud Browser</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🛰️</text></svg>" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <!-- Halo ambiant : copie floutée de la page distante, matière que le verre réfracte. -->
+    <div class="ambient" id="ambient" aria-hidden="true">
+      <canvas id="ambient-canvas" width="48" height="27"></canvas>
+    </div>
+
+    <main class="viewer" id="viewer" tabindex="0" aria-label="Rendu du navigateur distant">
+      <div class="stage" id="stage">
+        <canvas id="screen" width="1280" height="720"></canvas>
+      </div>
+      <p class="hint" id="focus-hint">Cliquez pour prendre le contrôle</p>
+    </main>
+
+    <header class="chrome">
+      <div class="bar glass">
+        <div class="nav">
+          <button id="btn-back" class="ctl" title="Précédent (Alt+←)" aria-label="Précédent" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+          </button>
+          <button id="btn-forward" class="ctl" title="Suivant (Alt+→)" aria-label="Suivant" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+          </button>
+          <button id="btn-reload" class="ctl" title="Recharger (F5)" aria-label="Recharger" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 12a8 8 0 1 1-2.3-5.6" />
+              <path d="M20 4v5h-5" />
+            </svg>
+          </button>
+          <button id="btn-home" class="ctl" title="Page d’accueil" aria-label="Page d’accueil" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 10.5 12 4l8 6.5" />
+              <path d="M6 9.8V19h12V9.8" />
+            </svg>
+          </button>
+        </div>
+
+        <form class="address" id="address-form" autocomplete="off">
+          <input id="url-input" type="text" spellcheck="false" aria-label="Adresse"
+                 placeholder="Saisissez une adresse ou une recherche" />
+          <button id="btn-go" class="go" type="submit" aria-label="Ouvrir" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7" /></svg>
+          </button>
+        </form>
+
+        <button id="btn-settings" class="ctl" title="Paramètres" aria-label="Paramètres"
+                aria-expanded="false" aria-controls="settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="3.2" />
+            <path d="M12 3.5v2M12 18.5v2M20.5 12h-2M5.5 12h-2M18 6l-1.4 1.4M7.4 16.6 6 18M18 18l-1.4-1.4M7.4 7.4 6 6" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="status glass" id="status">
+      <span class="dot" id="status-dot"></span>
+      <span id="status-text">Connexion…</span>
+      <span class="metrics" id="metrics" hidden>0 fps · 0 ko/s · — ms</span>
+    </div>
+
+    <div class="scrim" id="scrim"></div>
+
+    <!-- Paramètres : tout ce qui se configure est ici, et nulle part ailleurs. -->
+    <aside class="sheet glass" id="settings" role="dialog" aria-modal="false" aria-label="Paramètres">
+      <div class="sheet-head">
+        <h2>Paramètres</h2>
+        <button id="btn-close-settings" class="ctl" aria-label="Fermer les paramètres">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
+      </div>
+
+      <div class="sheet-body">
+        <section class="group">
+          <h3>Flux</h3>
+          <div class="segmented" id="mode-segmented" role="radiogroup" aria-label="Mode de transmission du rendu">
+            <span class="thumb" id="mode-thumb" aria-hidden="true"></span>
+            <button class="segment" role="radio" data-mode="screencast" aria-checked="true">Screencast</button>
+            <button class="segment" role="radio" data-mode="poll-ws" aria-checked="false">Polling WS</button>
+            <button class="segment" role="radio" data-mode="poll-http" aria-checked="false">Polling HTTP</button>
+          </div>
+          <p class="note" id="mode-note">Le serveur pousse une image à chaque changement visuel. Le plus fluide et le plus économe.</p>
+        </section>
+
+        <section class="group">
+          <h3>Image</h3>
+          <label class="row switch">
+            <span class="label">Qualité adaptative</span>
+            <input id="set-adaptive" type="checkbox" checked />
+            <span class="track" aria-hidden="true"><span class="knob"></span></span>
+          </label>
+          <label class="row slider" id="quality-row">
+            <span class="label" id="quality-label">Qualité JPEG</span>
+            <output id="quality-value">60</output>
+            <input id="quality" type="range" min="20" max="95" step="1" value="60" />
+          </label>
+          <label class="row slider" id="interval-row">
+            <span class="label">Cadence du polling</span>
+            <output id="interval-value">250 ms</output>
+            <input id="interval" type="range" min="100" max="1000" step="50" value="250" />
+          </label>
+          <label class="row switch" id="hidpi-row">
+            <span class="label">Netteté HiDPI (×2)</span>
+            <input id="set-hidpi" type="checkbox" />
+            <span class="track" aria-hidden="true"><span class="knob"></span></span>
+          </label>
+          <p class="note" id="image-note">
+            En mode adaptatif, le serveur ajuste la qualité selon la latence mesurée : il descend vite quand le trajet
+            sature, remonte doucement quand il respire.
+          </p>
+        </section>
+
+        <section class="group">
+          <h3>Recherche</h3>
+          <label class="row select">
+            <span class="label">Moteur par défaut</span>
+            <select id="search-engine"></select>
+          </label>
+          <p class="note">Utilisé par la page d’accueil et par la barre d’adresse.</p>
+        </section>
+
+        <section class="group">
+          <h3>Fenêtre distante</h3>
+          <label class="row switch">
+            <span class="label">Ajuster à l’affichage</span>
+            <input id="autosize" type="checkbox" checked />
+            <span class="track" aria-hidden="true"><span class="knob"></span></span>
+          </label>
+          <label class="row select" id="viewport-row">
+            <span class="label">Taille fixe</span>
+            <select id="viewport-preset">
+              <option value="1280x720">1280 × 720</option>
+              <option value="1366x768">1366 × 768</option>
+              <option value="1440x900">1440 × 900</option>
+              <option value="1600x900">1600 × 900</option>
+              <option value="1920x1080">1920 × 1080</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="group">
+          <h3>Affichage</h3>
+          <label class="row switch">
+            <span class="label">Halo ambiant</span>
+            <input id="set-ambient" type="checkbox" checked />
+            <span class="track" aria-hidden="true"><span class="knob"></span></span>
+          </label>
+          <label class="row switch">
+            <span class="label">Afficher les mesures</span>
+            <input id="set-metrics" type="checkbox" />
+            <span class="track" aria-hidden="true"><span class="knob"></span></span>
+          </label>
+          <label class="row switch">
+            <span class="label">Lisser l’image</span>
+            <input id="set-smooth" type="checkbox" checked />
+            <span class="track" aria-hidden="true"><span class="knob"></span></span>
+          </label>
+        </section>
+
+        <section class="group">
+          <h3>Session</h3>
+          <dl class="facts">
+            <div><dt>Compte</dt><dd id="fact-user">—</dd></div>
+            <div><dt>Identifiant</dt><dd id="fact-session">—</dd></div>
+            <div><dt>Fenêtre</dt><dd id="fact-viewport">—</dd></div>
+            <div><dt>Débit</dt><dd id="fact-rate">—</dd></div>
+            <div><dt>Latence</dt><dd id="fact-latency">—</dd></div>
+          </dl>
+          <div class="actions">
+            <button id="btn-new" class="action">Nouvelle session</button>
+            <button id="btn-logout" class="action danger">Se déconnecter</button>
+          </div>
+          <div class="actions">
+            <button id="btn-replay-onboarding" class="action subtle">Revoir l’introduction</button>
+          </div>
+        </section>
+      </div>
+    </aside>
+
+
+    <!-- Introduction : affichée une seule fois, rejouable depuis les Paramètres. -->
+    <div class="onboarding" id="onboarding" hidden>
+      <div class="onb-card glass">
+        <div class="onb-dots" id="onb-dots" aria-hidden="true">
+          <span class="on"></span><span></span><span></span>
+        </div>
+
+        <section class="onb-step" data-step="0">
+          <h2>Bienvenue</h2>
+          <p class="onb-lead">
+            Les pages que vous ouvrez ici sont chargées par le serveur, pas par votre machine. Vous n’en recevez que
+            des images, et vos clics y sont rejoués.
+          </p>
+          <ul class="onb-points">
+            <li><strong>Les sites ne voient que le serveur</strong> — jamais votre adresse IP.</li>
+            <li><strong>Rien ne reste</strong> — cookies et historique vivent en mémoire, le temps de la session.</li>
+            <li><strong>Cliquez dans la page</strong> pour que le clavier parte vers le site affiché.</li>
+          </ul>
+        </section>
+
+        <section class="onb-step" data-step="1" hidden>
+          <h2>Moteur de recherche</h2>
+          <p class="onb-lead">Utilisé par la page d’accueil et par la barre d’adresse. Modifiable à tout moment.</p>
+          <div class="onb-engines" id="onb-engines" role="radiogroup" aria-label="Moteur de recherche"></div>
+        </section>
+
+        <section class="onb-step" data-step="2" hidden>
+          <h2>Confort d’affichage</h2>
+          <p class="onb-lead">Un compromis entre réactivité et finesse d’image. Ajustable ensuite dans les Paramètres.</p>
+          <div class="onb-profiles" id="onb-profiles" role="radiogroup" aria-label="Profil d’affichage">
+            <button class="onb-choice" role="radio" data-profile="auto" aria-checked="true">
+              <span class="onb-choice-title">Automatique</span>
+              <span class="onb-choice-sub">La qualité suit la latence mesurée. Recommandé.</span>
+            </button>
+            <button class="onb-choice" role="radio" data-profile="fluid" aria-checked="false">
+              <span class="onb-choice-title">Priorité fluidité</span>
+              <span class="onb-choice-sub">Qualité fixe et basse, pour un lien lent ou lointain.</span>
+            </button>
+            <button class="onb-choice" role="radio" data-profile="sharp" aria-checked="false">
+              <span class="onb-choice-title">Priorité qualité</span>
+              <span class="onb-choice-sub">Image très détaillée, à réserver aux liens rapides.</span>
+            </button>
+          </div>
+          <label class="row switch onb-switch">
+            <span class="label">Halo ambiant</span>
+            <input id="onb-ambient" type="checkbox" checked />
+            <span class="track" aria-hidden="true"><span class="knob"></span></span>
+          </label>
+          <label class="row switch onb-switch">
+            <span class="label">Afficher les mesures (fps, débit, latence)</span>
+            <input id="onb-metrics" type="checkbox" />
+            <span class="track" aria-hidden="true"><span class="knob"></span></span>
+          </label>
+        </section>
+
+        <footer class="onb-actions">
+          <button id="onb-skip" class="onb-ghost" type="button">Passer</button>
+          <span class="onb-spacer"></span>
+          <button id="onb-back" class="action" type="button" hidden>Retour</button>
+          <button id="onb-next" class="action primary" type="button">Suivant</button>
+        </footer>
+      </div>
+    </div>
+
+    <div class="loader" id="loader" hidden>
+      <div class="glass loader-card">
+        <span class="spinner" aria-hidden="true"></span>
+        <span id="loader-text">Connexion…</span>
+      </div>
+    </div>
+
+    <div class="toasts" id="toasts" aria-live="polite"></div>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

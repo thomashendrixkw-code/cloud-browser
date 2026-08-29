@@ -1,0 +1,48 @@
+{
+  "name": "Cloud Browser",
+
+  // Image officielle Playwright : Chromium et ses dépendances système sont déjà
+  // présents, le Codespace démarre donc sans téléchargement de navigateur.
+  // Sa version doit rester alignée sur celle de "playwright" dans package.json.
+  "image": "mcr.microsoft.com/playwright:v1.49.1-jammy",
+  "remoteUser": "pwuser",
+
+  // L'encodage JPEG de chaque image est le poste de calcul dominant : deux cœurs
+  // suffisent à peine, quatre laissent de la marge pour tenir une cadence élevée.
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb",
+    "storage": "32gb"
+  },
+
+  "containerEnv": {
+    // Le sandbox Chromium n'existe pas dans un conteneur Codespace. Acceptable
+    // ici : le port n'est joignable qu'à travers le tunnel HTTPS de GitHub.
+    "CHROMIUM_SANDBOX": "false"
+  },
+
+  "postCreateCommand": "npm install",
+  // Forme objet : la commande tourne dans son propre terminal sans bloquer
+  // l'ouverture du Codespace.
+  "postAttachCommand": {
+    "server": "npm start"
+  },
+
+  "forwardPorts": [8787],
+  "portsAttributes": {
+    "8787": {
+      "label": "Cloud Browser",
+      "onAutoForward": "openPreview",
+      "protocol": "https"
+    }
+  },
+  "otherPortsAttributes": {
+    "onAutoForward": "silent"
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint"]
+    }
+  }
+}
