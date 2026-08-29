@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img"
+     aria-label="Cloud Browser">
+  <defs>
+    <linearGradient id="cb-tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4aa8ff" />
+      <stop offset="1" stop-color="#0a5fe0" />
+    </linearGradient>
+  </defs>
+
+  <!-- Tuile : même géométrie que les surfaces de l'interface. -->
+  <rect width="64" height="64" rx="15" fill="url(#cb-tile)" />
+
+  <!-- La fenêtre affichée. Seul élément qui doit rester lisible à 16 px. -->
+  <rect x="11.5" y="21" width="35" height="26" rx="5.5" fill="#fff" />
+  <path d="M11.5 29h35" stroke="#0a5fe0" stroke-opacity=".25" stroke-width="2" />
+  <circle cx="17" cy="25" r="1.8" fill="#0a5fe0" fill-opacity=".4" />
+
+  <!-- Le point distant : ce qui rend la marque autre chose qu'une icône de navigateur. -->
+  <circle cx="49" cy="15" r="5.1" fill="#fff" />
+</svg>

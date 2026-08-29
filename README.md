@@ -1,3 +1,5 @@
+<img src="public/icon.svg" width="76" align="right" alt="" />
+
 # Cloud Browser
 
 [![CI](https://github.com/thomashendrixkw-code/cloud-browser/actions/workflows/ci.yml/badge.svg)](https://github.com/thomashendrixkw-code/cloud-browser/actions/workflows/ci.yml)
